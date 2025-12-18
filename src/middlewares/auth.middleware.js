@@ -4,10 +4,13 @@ import jwt from "jsonwebtoken";
    VERIFY TOKEN (COOKIE)
 ============================ */
 export const verifyToken = (req, res, next) => {
-  console.log("🔍 Cookies object:", req.cookies);
-  console.log("🔍 Raw cookie header:", req.headers.cookie);
+  const authHeader = req.headers.authorization;
 
-  const token = req.cookies?.token;
+  if (!authHeader) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+
+  const token = authHeader.split(" ")[1]; // Bearer <token>
 
   if (!token) {
     return res.status(401).json({ message: "Not authenticated" });
@@ -18,7 +21,6 @@ export const verifyToken = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
-    console.error("❌ JWT verify error:", err.message);
     return res.status(401).json({ message: "Invalid token" });
   }
 };
