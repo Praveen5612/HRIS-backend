@@ -1,3 +1,8 @@
+import jwt from "jsonwebtoken";
+
+/* ============================
+   VERIFY TOKEN (COOKIE)
+============================ */
 export const verifyToken = (req, res, next) => {
   console.log("🔍 Cookies object:", req.cookies);
   console.log("🔍 Raw cookie header:", req.headers.cookie);
@@ -17,3 +22,26 @@ export const verifyToken = (req, res, next) => {
     return res.status(401).json({ message: "Invalid token" });
   }
 };
+
+/* ============================
+   ROLE CHECK
+============================ */
+export const requireRole = (role) => {
+  return (req, res, next) => {
+    if (!req.user || req.user.role !== role) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    next();
+  };
+};
+
+/* ============================
+   TOKEN GENERATOR
+============================ */
+export const generateToken = (payload) => {
+  return jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: "2h",
+  });
+};
+
+
