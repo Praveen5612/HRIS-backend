@@ -48,10 +48,12 @@ export const superAdminLogin = (req, res) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      secure: true,
+      domain: ".vercel.app", // 🔥 THIS LINE FIXES IT
       maxAge: 2 * 60 * 60 * 1000,
     });
+
 
     res.json({
       role: "SUPER_ADMIN",
