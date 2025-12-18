@@ -11,6 +11,8 @@ import designationRoutes from "./routes/designation.routes.js";
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 /* ============================
    MIDDLEWARES
 ============================ */
@@ -39,5 +41,7 @@ app.use("/api/company-admins", companyAdminRoutes);
 app.use("/api/hr", hrRoutes);
 app.use("/api/departments", departmentRoutes);
 app.use("/api/designations", designationRoutes);
+
+
 
 export default app;
