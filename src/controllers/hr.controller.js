@@ -1,4 +1,4 @@
-import { db } from "../models/db.js";
+import  db  from "../models/db.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../middlewares/auth.middleware.js";
 
@@ -6,39 +6,44 @@ import { generateToken } from "../middlewares/auth.middleware.js";
    CREATE HR (COMPANY ADMIN)
 ============================ */
 export const createHR = async (req, res) => {
-  const { empId, password, department, designation } = req.body;
-  const companyId = req.user.companyId;
+  const { emp_id, password, department, designation } = req.body;
+  const company_id = req.user.companyId;
 
-  if (!empId || !password || !department || !designation) {
+  /* VALIDATION */
+  if (!emp_id || !password || !department || !designation) {
     return res.status(400).json({ message: "All fields required" });
   }
 
   if (password.length < 8) {
-    return res.status(400).json({
-      message: "Password must be at least 8 characters",
-    });
-  }
-
-  if (designation !== "HR") {
-    return res.status(400).json({ message: "Invalid designation" });
+    return res
+      .status(400)
+      .json({ message: "Password must be at least 8 characters" });
   }
 
   try {
+    /* CHECK HR EXISTS */
     const checkSql = `
-      SELECT id FROM hr_users
+      SELECT id
+      FROM hr_users
       WHERE emp_id = ?
+        AND company_id = ?
       LIMIT 1
     `;
 
-    db.query(checkSql, [empId], async (err, rows) => {
-      if (err) return res.status(500).json({ message: "DB error" });
+    db.query(checkSql, [emp_id, company_id], async (err, rows) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ message: "DB error" });
+      }
 
       if (rows.length) {
         return res.status(409).json({ message: "HR already exists" });
       }
 
+      /* HASH PASSWORD */
       const hashedPassword = await bcrypt.hash(password, 10);
 
+      /* INSERT HR */
       const insertSql = `
         INSERT INTO hr_users
         (company_id, emp_id, password, department, designation)
@@ -47,16 +52,18 @@ export const createHR = async (req, res) => {
 
       db.query(
         insertSql,
-        [companyId, empId, hashedPassword, department, designation],
+        [company_id, emp_id, hashedPassword, department, designation],
         (err2, result) => {
           if (err2) {
+            console.error(err2);
             return res.status(500).json({ message: "Create HR failed" });
           }
 
           res.status(201).json({
             hr: {
               id: result.insertId,
-              empId,
+              company_id,
+              emp_id,
               department,
               designation,
             },
@@ -64,18 +71,21 @@ export const createHR = async (req, res) => {
         }
       );
     });
-  } catch {
-    return res.status(500).json({ message: "Server error" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
+
+
 /* ============================
-   HR PRE-LOGIN (PUBLIC)
+   HR PRE-LOGIN
 ============================ */
 export const hrPreLogin = (req, res) => {
-  const { empId, password } = req.body;
+  const { emp_id, password } = req.body;
 
-  if (!empId || !password) {
+  if (!emp_id || !password) {
     return res.status(400).json({ message: "Emp ID and password required" });
   }
 
@@ -83,30 +93,37 @@ export const hrPreLogin = (req, res) => {
     SELECT id, emp_id, password, company_id, department
     FROM hr_users
     WHERE emp_id = ?
+      AND is_active = 1
     LIMIT 1
   `;
 
-  db.query(sql, [empId], async (err, rows) => {
-    if (err) return res.status(500).json({ message: "DB error" });
-    if (!rows.length)
+  db.query(sql, [emp_id], async (err, rows) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "DB error" });
+    }
+
+    if (!rows.length) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     const hr = rows[0];
-    const match = await bcrypt.compare(password, hr.password);
 
+    const match = await bcrypt.compare(password, hr.password);
     if (!match) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // 🔐 TEMP LOGIN (OTP SIMPLIFIED)
+    // TEMP LOGIN (OTP SIMPLIFIED)
     res.json({
-      tempLoginId: hr.id, // reuse id for now
-      empId: hr.emp_id,
+      tempLoginId: hr.id,
+      emp_id: hr.emp_id,
       department: hr.department,
-      companyId: hr.company_id,
+      company_id: hr.company_id,
     });
   });
 };
+
 
 /* ============================
    HR VERIFY OTP (PUBLIC)

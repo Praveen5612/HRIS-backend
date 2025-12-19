@@ -1,4 +1,4 @@
-import { db } from "../models/db.js";
+import  db  from "../models/db.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { generateToken } from "../middlewares/auth.middleware.js";
@@ -8,58 +8,46 @@ import { generateToken } from "../middlewares/auth.middleware.js";
    (SUPER ADMIN)
 ============================ */
 export const createCompanyAdmin = async (req, res) => {
-  const { companyId, email, password } = req.body;
+  const { company_id, email, password } = req.body;
 
-  if (!companyId || !email || !password) {
+  if (!company_id || !email || !password) {
     return res.status(400).json({ message: "All fields required" });
   }
 
-  try {
-    // Check if admin already exists
-    const checkSql = `
-      SELECT id FROM company_admins
-      WHERE company_id = ?
-      LIMIT 1
+  const checkSql = `
+    SELECT id FROM company_admins
+    WHERE company_id = ?
+    LIMIT 1
+  `;
+
+  db.query(checkSql, [company_id], async (err, rows) => {
+    if (err) return res.status(500).json({ message: "DB error" });
+
+    if (rows.length) {
+      return res.status(409).json({ message: "Admin already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const insertSql = `
+      INSERT INTO company_admins (company_id, email, password, is_active)
+      VALUES (?, ?, ?, 1)
     `;
 
-    db.query(checkSql, [companyId], async (err, rows) => {
-      if (err) return res.status(500).json({ message: "DB error" });
-      if (rows.length) {
-        return res.status(409).json({ message: "Admin already exists" });
-      }
+    db.query(insertSql, [company_id, email, hashedPassword], (err2, result) => {
+      if (err2) return res.status(500).json({ message: "Create failed" });
 
-      // 🔐 HASH PASSWORD (CRITICAL FIX)
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      const insertSql = `
-        INSERT INTO company_admins (company_id, email, password, is_active)
-        VALUES (?, ?, ?, 1)
-      `;
-
-      db.query(
-        insertSql,
-        [companyId, email, hashedPassword],
-        (err2, result) => {
-          if (err2) {
-            console.error(err2);
-            return res.status(500).json({ message: "Create failed" });
-          }
-
-          res.status(201).json({
-            admin: {
-              id: result.insertId,
-              company_id: companyId,
-              email,
-            },
-          });
-        }
-      );
+      res.status(201).json({
+        admin: {
+          id: result.insertId,
+          company_id,
+          email,
+        },
+      });
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
+  });
 };
+
 
 /* ============================
    ADMIN PRE-LOGIN

@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 const caPath = path.join(__dirname, "../../ca.pem");
 const ca = fs.readFileSync(caPath, "utf8");
 
-export const db = mysql.createPool({
+const db = mysql.createPool({
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT),
   user: process.env.DB_USER,
@@ -27,3 +27,6 @@ export const db = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10
 });
+
+export default db;
+
