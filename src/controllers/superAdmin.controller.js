@@ -46,14 +46,9 @@ export const superAdminLogin = (req, res) => {
       role: "SUPER_ADMIN",
     });
 
-    res.json({
-      token,                 // 🔥 IMPORTANT
-      role: "SUPER_ADMIN",
-      email: admin.email,
-    });
-
-
-    res.json({
+    // ✅ SINGLE RESPONSE ONLY
+    return res.json({
+      token,
       role: "SUPER_ADMIN",
       email: admin.email,
     });
@@ -64,11 +59,5 @@ export const superAdminLogin = (req, res) => {
    SUPER ADMIN LOGOUT
 ============================ */
 export const superAdminLogout = (req, res) => {
-  res.clearCookie("token", {
-    httpOnly: true,
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    secure: process.env.NODE_ENV === "production",
-  });
-
-  res.json({ message: "Logged out successfully" });
+  return res.json({ message: "Logged out successfully" });
 };

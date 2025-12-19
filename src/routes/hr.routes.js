@@ -1,5 +1,10 @@
 import express from "express";
-import { createHR } from "../controllers/hr.controller.js";
+import {
+  createHR,
+  hrPreLogin,
+  hrVerifyOtp
+} from "../controllers/hr.controller.js";
+
 import {
   verifyToken,
   requireRole
@@ -7,7 +12,20 @@ import {
 
 const router = express.Router();
 
-/* COMPANY ADMIN → CREATE HR */
+/* ============================
+   PUBLIC – HR LOGIN
+============================ */
+
+// Step 1: HR enters empId + password
+router.post("/pre-login", hrPreLogin);
+
+// Step 2: HR verifies OTP (kept for future, simple for now)
+router.post("/verify-otp", hrVerifyOtp);
+
+/* ============================
+   PROTECTED – CREATE HR
+   (Only Company Admin)
+============================ */
 router.post(
   "/",
   verifyToken,
