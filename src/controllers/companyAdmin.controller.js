@@ -1,13 +1,13 @@
-import  db  from "../models/db.js";
+import db from "../models/db.js";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { generateToken } from "../middlewares/auth.middleware.js";
 
 /* ============================
    CREATE COMPANY ADMIN
-   (SUPER ADMIN)
+   (SUPER ADMIN ONLY)
 ============================ */
-export const createCompanyAdmin = async (req, res) => {
+export const createCompanyAdmin = (req, res) => {
   const { company_id, email, password } = req.body;
 
   if (!company_id || !email || !password) {
@@ -21,7 +21,10 @@ export const createCompanyAdmin = async (req, res) => {
   `;
 
   db.query(checkSql, [company_id], async (err, rows) => {
-    if (err) return res.status(500).json({ message: "DB error" });
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "DB error" });
+    }
 
     if (rows.length) {
       return res.status(409).json({ message: "Admin already exists" });
@@ -35,9 +38,12 @@ export const createCompanyAdmin = async (req, res) => {
     `;
 
     db.query(insertSql, [company_id, email, hashedPassword], (err2, result) => {
-      if (err2) return res.status(500).json({ message: "Create failed" });
+      if (err2) {
+        console.error(err2);
+        return res.status(500).json({ message: "Create failed" });
+      }
 
-      res.status(201).json({
+      return res.status(201).json({
         admin: {
           id: result.insertId,
           company_id,
@@ -48,10 +54,8 @@ export const createCompanyAdmin = async (req, res) => {
   });
 };
 
-
 /* ============================
-   ADMIN PRE-LOGIN
-   (PASSWORD CHECK)
+   COMPANY ADMIN PRE-LOGIN
 ============================ */
 export const companyAdminPreLogin = (req, res) => {
   const { companyId, email, password } = req.body;
@@ -71,24 +75,19 @@ export const companyAdminPreLogin = (req, res) => {
 
   db.query(sql, [email, companyId], async (err, rows) => {
     if (err) return res.status(500).json({ message: "DB error" });
-
     if (!rows.length) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const admin = rows[0];
-
-    // 🔐 bcrypt compare
-    const isMatch = await bcrypt.compare(password, admin.password);
+    const isMatch = await bcrypt.compare(password, rows[0].password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // TEMP OTP SESSION
     const tempLoginId = crypto.randomUUID();
     global.adminOtpSessions = global.adminOtpSessions || {};
     global.adminOtpSessions[tempLoginId] = {
-      adminId: admin.id,
+      adminId: rows[0].id,
       companyId,
       createdAt: Date.now(),
     };
@@ -98,7 +97,7 @@ export const companyAdminPreLogin = (req, res) => {
 };
 
 /* ============================
-   ADMIN OTP VERIFY
+   COMPANY ADMIN OTP VERIFY
 ============================ */
 export const companyAdminVerifyOtp = (req, res) => {
   const { tempLoginId, otp } = req.body;
@@ -114,14 +113,12 @@ export const companyAdminVerifyOtp = (req, res) => {
 
   delete global.adminOtpSessions[tempLoginId];
 
-  // 🔐 GENERATE JWT (THIS WAS MISSING)
   const token = generateToken({
     id: session.adminId,
     role: "COMPANY_ADMIN",
     companyId: session.companyId,
   });
 
-  // ✅ RETURN TOKEN IN RESPONSE BODY
   res.json({
     token,
     role: "COMPANY_ADMIN",
