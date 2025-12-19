@@ -78,7 +78,6 @@ export const createHR = async (req, res) => {
 };
 
 
-
 /* ============================
    HR PRE-LOGIN
 ============================ */
