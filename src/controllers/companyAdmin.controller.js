@@ -115,7 +115,6 @@ export const companyAdminPreLogin = (req, res) => {
 export const companyAdminVerifyOtp = (req, res) => {
   const { tempLoginId, otp } = req.body;
 
-  // 🔑 DEMO OTP
   if (otp !== "999999") {
     return res.status(401).json({ message: "Invalid OTP" });
   }
@@ -127,13 +126,14 @@ export const companyAdminVerifyOtp = (req, res) => {
 
   delete global.adminOtpSessions[tempLoginId];
 
-  // 🔐 JWT TOKEN (NO COOKIES)
+  // 🔐 GENERATE JWT (THIS WAS MISSING)
   const token = generateToken({
     id: session.adminId,
     role: "COMPANY_ADMIN",
     companyId: session.companyId,
   });
 
+  // ✅ RETURN TOKEN IN RESPONSE BODY
   res.json({
     token,
     role: "COMPANY_ADMIN",

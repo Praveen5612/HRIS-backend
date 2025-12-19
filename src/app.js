@@ -17,8 +17,16 @@ app.set("trust proxy", 1);
    MIDDLEWARES
 ============================ */
 app.use(cors({
-  origin: "https://hris-admin.vercel.app",
+  origin: [
+    "http://localhost:5173",   // Vite
+    "http://localhost:3000",   // CRA (just in case)
+    "https://hris-admin.vercel.app" // keep prod
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
+
 app.options("*", cors());
 
 
