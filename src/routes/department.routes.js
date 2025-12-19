@@ -4,19 +4,26 @@ import {
   listDepartments,
   updateDepartment,
   deleteDepartment,
+  listDepartmentsPublic,
 } from "../controllers/department.controller.js";
 
 import { verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-/* 🔐 All department routes require auth */
+/* ============================
+   PUBLIC (LOGIN USE)
+============================ */
+router.get("/public", listDepartmentsPublic);
+
+/* ============================
+   PROTECTED
+============================ */
 router.use(verifyToken);
 
-/* CRUD */
-router.post("/", createDepartment);       // ADMIN
-router.get("/", listDepartments);          // ADMIN + HR
-router.put("/:id", updateDepartment);      // ADMIN
-router.delete("/:id", deleteDepartment);   // ADMIN (soft)
+router.post("/", createDepartment);
+router.get("/", listDepartments);
+router.put("/:id", updateDepartment);
+router.delete("/:id", deleteDepartment);
 
 export default router;

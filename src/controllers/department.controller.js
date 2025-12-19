@@ -132,3 +132,28 @@ export const deleteDepartment = (req, res) => {
     res.json({ message: "Department deleted" });
   });
 };
+
+
+export const listDepartmentsPublic = (req, res) => {
+  const { companyId } = req.query;
+
+  if (!companyId) {
+    return res.status(400).json({ message: "companyId required" });
+  }
+
+  const sql = `
+    SELECT id, department_name
+    FROM departments
+    WHERE company_id = ?
+      AND is_active = 1
+    ORDER BY department_name
+  `;
+
+  db.query(sql, [companyId], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ message: "DB error" });
+    }
+
+    return res.json(rows);
+  });
+};
