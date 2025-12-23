@@ -6,7 +6,8 @@ import {
   updateEmployee,
   toggleEmployeeStatus,
   upsertEmployeeBiodata,
-  getEmployeeBiodata
+  getEmployeeBiodata,
+  getLastEmployeeCode,
 } from "../controllers/employee.controller.js";
 
 import { verifyToken } from "../middlewares/auth.middleware.js";
@@ -19,6 +20,9 @@ router.post("/", verifyToken, createEmployee);
 /* LIST */
 router.get("/", verifyToken, getEmployees);
 
+/* LAST EMP CODE (STATIC ROUTE FIRST) */
+router.get("/last-code", verifyToken, getLastEmployeeCode);
+
 /* VIEW */
 router.get("/:id", verifyToken, getEmployeeById);
 
@@ -28,9 +32,8 @@ router.put("/:id", verifyToken, updateEmployee);
 /* ACTIVATE / DEACTIVATE */
 router.patch("/:id/status", verifyToken, toggleEmployeeStatus);
 
-
+/* BIODATA */
 router.post("/:id/biodata", verifyToken, upsertEmployeeBiodata);
 router.get("/:id/biodata", verifyToken, getEmployeeBiodata);
-
 
 export default router;
