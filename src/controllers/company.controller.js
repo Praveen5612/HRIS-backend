@@ -73,3 +73,30 @@ export const getCompaniesForLogin = (req, res) => {
     res.json(rows);
   });
 };
+
+
+// controllers/company.controller.js
+export const updateCompanyName = (req, res) => {
+  const companyId = req.params.id;
+  const { name } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ message: "Company name required" });
+  }
+
+  const sql = `
+    UPDATE companies
+    SET name = ?
+    WHERE id = ?
+  `;
+
+  db.query(sql, [name, companyId], (err, result) => {
+    if (err) return res.status(500).json({ message: "DB error" });
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    res.json({ message: "Company name updated successfully" });
+  });
+};
