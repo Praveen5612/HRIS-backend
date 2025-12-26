@@ -20,7 +20,7 @@ router.post("/", verifyToken, createEmployee);
 /* LIST */
 router.get("/", verifyToken, getEmployees);
 
-/* LAST EMP CODE (STATIC ROUTE FIRST) */
+/* LAST CODE */
 router.get("/last-code", verifyToken, getLastEmployeeCode);
 
 /* VIEW */
@@ -29,7 +29,7 @@ router.get("/:id", verifyToken, getEmployeeById);
 /* UPDATE */
 router.put("/:id", verifyToken, updateEmployee);
 
-/* ACTIVATE / DEACTIVATE */
+/* STATUS */
 router.patch("/:id/status", verifyToken, toggleEmployeeStatus);
 
 /* BIODATA */

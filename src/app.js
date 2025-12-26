@@ -11,6 +11,8 @@ import designationRoutes from "./routes/designation.routes.js";
 import employeeRoutes from "./routes/employee.routes.js";
 import employeeDocumentRoutes from "./routes/employeeDocument.routes.js";
 import employeeAuthRoutes from "./routes/employeeAuth.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
+
 
 const app = express();
 
@@ -59,5 +61,9 @@ app.use("/api/designations", designationRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/employee-documents", employeeDocumentRoutes);
 app.use("/api/employee-auth", employeeAuthRoutes);
+
+
+app.use("/api", dashboardRoutes);
+
 
 export default app;

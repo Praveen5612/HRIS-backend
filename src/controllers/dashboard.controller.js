@@ -4,27 +4,60 @@ export const getDashboard = async (req, res) => {
   const { role, company_id } = req.user;
 
   try {
-    /* ================= EMPLOYEES KPI ================= */
-    const [emp] = await db.query(
+    const [empRows] = await db.promise().query(
       `
       SELECT
-        COUNT(*) as total,
-        SUM(is_active = 0) as inactive
+        COUNT(*) AS total,
+        COALESCE(SUM(is_active = 0), 0) AS inactive
       FROM employees
       WHERE company_id = ?
+
       `,
       [company_id]
     );
 
-    res.json({
+    const employees = empRows[0] || { total: 0, inactive: 0 };
+
+    const attendance = {
+      present: 0,
+      absent: 0,
+      late: 0,
+      ot: 0,
+      status: "NOT_AVAILABLE",
+    };
+
+    const approvals = { leave: 0, attendance: 0, fnf: 0 };
+
+    const salary = { status: "NOT_STARTED", month: null };
+
+    const compliance = {
+      esi: "OK",
+      pf: "OK",
+      bonus: "UPCOMING",
+      gratuity: "OK",
+    };
+
+    const cost = { payroll: 0, overtime: 0, esiPf: 0 };
+
+    return res.json({
       role,
-      scope: "ALL", // HR also sees full dashboard
+      company_id,
+      scope: role === "COMPANY_ADMIN" ? "COMPANY" : "DEPARTMENT",
       kpis: {
-        employees: emp[0],
+        employees,
+        attendance,
+        approvals,
+        salary,
+        compliance,
+        cost,
+      },
+      meta: {
+        generatedAt: new Date(),
+        dataStatus: "PARTIAL",
       },
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Dashboard failed" });
+    console.error("Dashboard Error:", err);
+    return res.status(500).json({ message: "Dashboard failed" });
   }
 };
