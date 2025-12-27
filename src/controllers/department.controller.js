@@ -1,15 +1,11 @@
-import  db  from "../models/db.js";
+import db from "../models/db.js";
 
 /* ============================
-   CREATE DEPARTMENT (ADMIN)
+   CREATE DEPARTMENT
 ============================ */
 export const createDepartment = (req, res) => {
   const { department_name } = req.body;
-  const { companyId, role, id: adminId } = req.user;
-
-  if (role !== "COMPANY_ADMIN") {
-    return res.status(403).json({ message: "Access denied" });
-  }
+  const { company_id, id: adminId } = req.user;
 
   if (!department_name?.trim()) {
     return res.status(400).json({ message: "Department name required" });
@@ -23,56 +19,59 @@ export const createDepartment = (req, res) => {
 
   db.query(
     sql,
-    [companyId, department_name.trim(), adminId],
+    [company_id, department_name.trim(), adminId],
     (err) => {
       if (err) {
-        console.error("CREATE DEPARTMENT ERROR:", err);
-
         if (err.code === "ER_DUP_ENTRY") {
-          return res
-            .status(409)
-            .json({ message: "Department already exists" });
+          return res.status(409).json({ message: "Department already exists" });
         }
-
         return res.status(500).json({ message: "DB error" });
       }
 
-      res.status(201).json({ message: "Department created" });
+      res.status(201).json({ message: "Department created successfully" });
     }
   );
 };
 
 /* ============================
-   LIST DEPARTMENTS (ADMIN + HR)
+   LIST DEPARTMENTS
 ============================ */
 export const listDepartments = (req, res) => {
-  const { companyId } = req.user;
+  const companyId = req.user.company_id;
+  const { branch_id } = req.query;
+
+  if (!branch_id) {
+    return res.status(400).json({ message: "branch_id is required" });
+  }
 
   const sql = `
     SELECT id, department_name
     FROM departments
     WHERE company_id = ?
+      AND branch_id = ?
       AND is_active = 1
     ORDER BY department_name
   `;
 
-  db.query(sql, [companyId], (err, rows) => {
-    if (err) return res.status(500).json({ message: "DB error" });
+  db.query(sql, [companyId, branch_id], (err, rows) => {
+    if (err) {
+      console.error("LIST DEPARTMENTS ERROR:", err);
+      return res.status(500).json({ message: "DB error" });
+    }
+
     res.json(rows);
   });
 };
 
+
+
 /* ============================
-   UPDATE DEPARTMENT (ADMIN)
+   UPDATE DEPARTMENT
 ============================ */
 export const updateDepartment = (req, res) => {
   const { id } = req.params;
   const { department_name } = req.body;
-  const { companyId, role } = req.user;
-
-  if (role !== "COMPANY_ADMIN") {
-    return res.status(403).json({ message: "Access denied" });
-  }
+  const { company_id } = req.user;
 
   if (!department_name?.trim()) {
     return res.status(400).json({ message: "Department name required" });
@@ -83,12 +82,11 @@ export const updateDepartment = (req, res) => {
     SET department_name = ?
     WHERE id = ?
       AND company_id = ?
-      AND is_active = 1
   `;
 
   db.query(
     sql,
-    [department_name.trim(), id, companyId],
+    [department_name.trim(), id, company_id],
     (err, result) => {
       if (err) return res.status(500).json({ message: "DB error" });
 
@@ -96,22 +94,17 @@ export const updateDepartment = (req, res) => {
         return res.status(404).json({ message: "Department not found" });
       }
 
-      res.json({ message: "Department updated" });
+      res.json({ message: "Department updated successfully" });
     }
   );
 };
 
 /* ============================
-   DELETE DEPARTMENT (ADMIN)
-   → HARD DELETE (as you want)
+   DELETE DEPARTMENT (HARD)
 ============================ */
 export const deleteDepartment = (req, res) => {
   const { id } = req.params;
-  const { companyId, role } = req.user;
-
-  if (role !== "COMPANY_ADMIN") {
-    return res.status(403).json({ message: "Access denied" });
-  }
+  const { company_id } = req.user;
 
   const sql = `
     DELETE FROM departments
@@ -119,26 +112,25 @@ export const deleteDepartment = (req, res) => {
       AND company_id = ?
   `;
 
-  db.query(sql, [id, companyId], (err, result) => {
-    if (err) {
-      console.error("DELETE DEPARTMENT ERROR:", err);
-      return res.status(500).json({ message: "DB error" });
-    }
+  db.query(sql, [id, company_id], (err, result) => {
+    if (err) return res.status(500).json({ message: "DB error" });
 
     if (!result.affectedRows) {
       return res.status(404).json({ message: "Department not found" });
     }
 
-    res.json({ message: "Department deleted" });
+    res.json({ message: "Department deleted successfully" });
   });
 };
 
-
+/* ============================
+   PUBLIC LIST (LOGIN / HR)
+============================ */
 export const listDepartmentsPublic = (req, res) => {
-  const { companyId } = req.query;
+  const { company_id } = req.query;
 
-  if (!companyId) {
-    return res.status(400).json({ message: "companyId required" });
+  if (!company_id) {
+    return res.status(400).json({ message: "company_id required" });
   }
 
   const sql = `
@@ -149,11 +141,8 @@ export const listDepartmentsPublic = (req, res) => {
     ORDER BY department_name
   `;
 
-  db.query(sql, [companyId], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ message: "DB error" });
-    }
-
-    return res.json(rows);
+  db.query(sql, [company_id], (err, rows) => {
+    if (err) return res.status(500).json({ message: "DB error" });
+    res.json(rows);
   });
 };

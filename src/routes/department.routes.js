@@ -11,14 +11,10 @@ import { verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-/* ============================
-   PUBLIC (LOGIN USE)
-============================ */
+/* PUBLIC */
 router.get("/public", listDepartmentsPublic);
 
-/* ============================
-   PROTECTED
-============================ */
+/* PROTECTED */
 router.use(verifyToken);
 
 router.post("/", createDepartment);

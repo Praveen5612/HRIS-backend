@@ -12,6 +12,8 @@ import employeeRoutes from "./routes/employee.routes.js";
 import employeeDocumentRoutes from "./routes/employeeDocument.routes.js";
 import employeeAuthRoutes from "./routes/employeeAuth.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
+import branchRoutes from "./routes/branch.routes.js";
+
 
 
 const app = express();
@@ -64,6 +66,8 @@ app.use("/api/employee-auth", employeeAuthRoutes);
 
 
 app.use("/api", dashboardRoutes);
+
+app.use("/api/branches", branchRoutes); 
 
 
 export default app;

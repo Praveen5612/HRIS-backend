@@ -1,5 +1,5 @@
 import db from "../models/db.js";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { generateToken } from "../middlewares/auth.middleware.js";
 
@@ -63,10 +63,14 @@ export const createCompanyAdmin = (req, res) => {
   });
 };
 
+
 /* =====================================================
    COMPANY ADMIN PRE-LOGIN (EMAIL + PASSWORD)
 ===================================================== */
 export const companyAdminPreLogin = (req, res) => {
+  console.log("PRE-LOGIN BODY:", req.body);
+
+
   const { company_id, email, password } = req.body;
 
   if (!company_id || !email || !password) {

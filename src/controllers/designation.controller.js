@@ -1,129 +1,225 @@
-import db  from "../models/db.js";
+import db from "../models/db.js";
 
 /* ============================
    CREATE DESIGNATION
-   ADMIN + HR
 ============================ */
 export const createDesignation = (req, res) => {
-  const { department_id, designation_name } = req.body;
-  const { companyId, role, id: userId } = req.user;
+  const { department_id, branch_id, designation_name, designation_code } =
+    req.body;
 
-  if (!department_id || !designation_name) {
-    return res.status(400).json({ message: "Missing fields" });
+  const { company_id, role, id: created_by_id } = req.user;
+
+  if (!designation_name?.trim() || !department_id || !branch_id) {
+    return res.status(400).json({
+      message: "department_id, branch_id and designation_name are required",
+    });
   }
 
-  const sql = `
-    INSERT INTO designations
-    (company_id, department_id, designation_name, created_by_role, created_by_id)
-    VALUES (?, ?, ?, ?, ?)
+  const validateSql = `
+    SELECT 1
+    FROM departments d
+    JOIN branches b ON b.id = ?
+    WHERE d.id = ?
+      AND d.company_id = ?
+      AND b.company_id = ?
   `;
 
   db.query(
-    sql,
-    [companyId, department_id, designation_name, role, userId],
-    (err) => {
+    validateSql,
+    [branch_id, department_id, company_id, company_id],
+    (err, rows) => {
       if (err) {
-        if (err.code === "ER_DUP_ENTRY") {
-          return res.status(409).json({ message: "Designation already exists" });
-        }
+        console.error("VALIDATE DESIGNATION ERROR:", err);
         return res.status(500).json({ message: "DB error" });
       }
 
-      res.status(201).json({ message: "Designation created" });
+      if (!rows.length) {
+        return res.status(400).json({
+          message: "Invalid department or branch for this company",
+        });
+      }
+
+      const insertSql = `
+        INSERT INTO designations (
+          company_id,
+          branch_id,
+          department_id,
+          designation_name,
+          designation_code,
+          created_by_role,
+          created_by_id
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      db.query(
+        insertSql,
+        [
+          company_id,
+          branch_id,
+          department_id,
+          designation_name.trim(),
+          designation_code || null,
+          role,
+          created_by_id,
+        ],
+        (err2) => {
+          if (err2) {
+            console.error("CREATE DESIGNATION ERROR:", err2);
+
+            if (err2.code === "ER_DUP_ENTRY") {
+              return res
+                .status(409)
+                .json({ message: "Designation already exists" });
+            }
+
+            return res.status(500).json({ message: "DB error" });
+          }
+
+          res.status(201).json({ message: "Designation created successfully" });
+        }
+      );
     }
   );
 };
 
 /* ============================
    LIST DESIGNATIONS
-   ADMIN + HR
 ============================ */
 export const listDesignations = (req, res) => {
-  const { departmentId } = req.query;
-  const { companyId } = req.user;
+  const { company_id } = req.user;
+  const { department_id, branch_id } = req.query;
 
-  if (!departmentId) {
-    return res.status(400).json({ message: "Department ID required" });
+  if (!department_id || !branch_id) {
+    return res.status(400).json({
+      message: "department_id and branch_id are required",
+    });
   }
 
   const sql = `
-    SELECT 
-      id,
-      designation_name,
-      0 AS employeeCount
-    FROM designations
-    WHERE company_id = ?
-      AND department_id = ?
-      AND is_active = 1
-    ORDER BY designation_name
+    SELECT
+      d.id,
+      d.designation_name,
+      d.designation_code,
+      d.is_active,
+      dep.department_name,
+      b.branch_name
+    FROM designations d
+    JOIN departments dep
+      ON dep.id = d.department_id
+     AND dep.company_id = d.company_id
+    JOIN branches b
+      ON b.id = d.branch_id
+     AND b.company_id = d.company_id
+    WHERE d.company_id = ?
+      AND d.department_id = ?
+      AND d.branch_id = ?
+      AND d.is_active = 1
+    ORDER BY d.designation_name
   `;
 
-  db.query(sql, [companyId, departmentId], (err, rows) => {
-    if (err) return res.status(500).json({ message: "DB error" });
+  db.query(sql, [company_id, department_id, branch_id], (err, rows) => {
+    if (err) {
+      console.error("LIST DESIGNATION ERROR:", err);
+      return res.status(500).json({ message: "DB error" });
+    }
+
     res.json(rows);
   });
 };
 
 /* ============================
-   UPDATE DESIGNATION
-   ADMIN ONLY
+   UPDATE DESIGNATION (SAFE)
 ============================ */
 export const updateDesignation = (req, res) => {
   const { id } = req.params;
-  const { designation_name } = req.body;
-  const { companyId, role } = req.user;
+  const { designation_name, designation_code } = req.body;
+  const { company_id } = req.user;
 
-  if (role !== "COMPANY_ADMIN") {
-    return res.status(403).json({ message: "Access denied" });
-  }
-
-  if (!designation_name) {
-    return res.status(400).json({ message: "Designation name required" });
+  if (!designation_name?.trim()) {
+    return res.status(400).json({
+      message: "Designation name is required",
+    });
   }
 
   const sql = `
     UPDATE designations
-    SET designation_name = ?
+    SET
+      designation_name = ?,
+      designation_code = ?
     WHERE id = ?
       AND company_id = ?
-      AND is_active = 1
   `;
 
-  db.query(sql, [designation_name, id, companyId], (err, result) => {
-    if (err) return res.status(500).json({ message: "DB error" });
+  db.query(
+    sql,
+    [designation_name.trim(), designation_code || null, id, company_id],
+    (err, result) => {
+      if (err) {
+        console.error("UPDATE DESIGNATION ERROR:", err);
+        return res.status(500).json({ message: "DB error" });
+      }
+
+      if (!result.affectedRows) {
+        return res.status(404).json({ message: "Designation not found" });
+      }
+
+      res.json({ message: "Designation updated successfully" });
+    }
+  );
+};
+
+/* ============================
+   TOGGLE STATUS
+============================ */
+export const toggleDesignationStatus = (req, res) => {
+  const { id } = req.params;
+  const { company_id } = req.user;
+
+  const sql = `
+    UPDATE designations
+    SET is_active = IF(is_active = 1, 0, 1)
+    WHERE id = ?
+      AND company_id = ?
+  `;
+
+  db.query(sql, [id, company_id], (err, result) => {
+    if (err) {
+      console.error("TOGGLE DESIGNATION ERROR:", err);
+      return res.status(500).json({ message: "DB error" });
+    }
+
     if (!result.affectedRows) {
       return res.status(404).json({ message: "Designation not found" });
     }
 
-    res.json({ message: "Designation updated" });
+    res.json({ message: "Designation status updated" });
   });
 };
 
 /* ============================
    DELETE DESIGNATION
-   ADMIN ONLY (SOFT)
 ============================ */
 export const deleteDesignation = (req, res) => {
   const { id } = req.params;
-  const { companyId, role } = req.user;
-
-  if (role !== "COMPANY_ADMIN") {
-    return res.status(403).json({ message: "Access denied" });
-  }
+  const { company_id } = req.user;
 
   const sql = `
     DELETE FROM designations
-    WHERE id = ? AND company_id = ?
+    WHERE id = ?
+      AND company_id = ?
   `;
 
-  db.query(sql, [id, companyId], (err, result) => {
-    if (err) return res.status(500).json({ message: "DB error" });
+  db.query(sql, [id, company_id], (err, result) => {
+    if (err) {
+      console.error("DELETE DESIGNATION ERROR:", err);
+      return res.status(500).json({ message: "DB error" });
+    }
 
     if (!result.affectedRows) {
       return res.status(404).json({ message: "Designation not found" });
     }
 
-    res.json({ message: "Designation deleted" });
+    res.json({ message: "Designation deleted successfully" });
   });
 };
-
